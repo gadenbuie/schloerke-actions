@@ -110,16 +110,6 @@ runs:
         shell: Rscript {0}
         working-directory: ${{ inputs.working-directory }}
 
-      - name: Create cache args
-        id: cache-args
-        shell: bash
-        run: |
-          # Make cache args
-          RESTORE_KEY="${{ format('{0}-{1}-{2}', steps.install.outputs.os-version, steps.install.outputs.r-version, inputs.cache-version) }}"
-          PRIMARY_KEY="$RESTORE_KEY-${{ hashFiles(format('{0}/.github/pkg.lock', inputs.working-directory )) }}"
-          echo "key=$PRIMARY_KEY" >> $GITHUB_OUTPUT
-          echo "restore-key=$RESTORE_KEY" >> $GITHUB_OUTPUT
-
       - name: Restore R package cache
         if: inputs.cache == 'true'
         id: r-pkg-cache
@@ -128,8 +118,8 @@ runs:
           path: |
             ${{ env.R_LIBS_USER }}/*
             !${{ env.R_LIBS_USER }}/pak
-          key: ${{ steps.cache-args.outputs.key }}
-          restore-keys: ${{ steps.cache-keys.outputs.restore-key }}
+          key: ${{ format('{0}-{1}-{2}-{3}', steps.install.outputs.os-version, steps.install.outputs.r-version, inputs.cache-version, hashFiles(format('{0}/.github/pkg.lock', inputs.working-directory ))) }}
+          restore-keys: ${{ steps.install.outputs.os-version }}-${{ steps.install.outputs.r-version }}-${{inputs.cache-version }}-
 
       - name: Install dependencies
         run: |
@@ -145,17 +135,15 @@ runs:
         working-directory: ${{ inputs.working-directory }}
 
       # Step used to help speed up package installation on troublesome Actions
-      # If an Action fails, cache from `actions/cache@v3` will NOT be saved
-      # However `actions/cache/save@v3` will always save, warming the next execution of `actions/cache@v3` above
       - name: Save R package cache
-        # If `actions/cache@v3` restored from `key`, then `cache-hit == 'true'`; If so, do not save cache
+        # If `actions/cache/restore@v3` restored from `cache-primary-key`, then `cache-hit == 'true'`; If so, do not save cache
         if: inputs.cache == 'true' && steps.r-pkg-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v3
         with:
           path: |
             ${{ env.R_LIBS_USER }}/*
             !${{ env.R_LIBS_USER }}/pak
-          key: ${{ steps.cache-args.outputs.key }}
+          key: ${{ steps.r-pkg-cache.outputs.cache-primary-key }}
 
       - name: Session info
         run: |
