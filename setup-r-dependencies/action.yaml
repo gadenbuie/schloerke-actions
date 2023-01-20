@@ -96,19 +96,19 @@ runs:
           cat("::endgroup::\n")
         shell: Rscript {0}
         working-directory: ${{ inputs.working-directory }}
-      
+
       - name: Create cache args
         id: cache-args
         shell: bash
         run: |
           # Make cache args
-          PATH="${{ env.R_LIBS_USER }}/*
+          PATH_ARG="${{ env.R_LIBS_USER }}/*
           !${{ env.R_LIBS_USER }}/pak"
           RESTORE_KEY="${{ format('{0}-{1}-{2}', steps.install.outputs.os-version, steps.install.outputs.r-version, inputs.cache-version) }}"
           PRIMARY_KEY="$RESTORE_KEY-${{ hashFiles(format('{0}/.github/pkg.lock', inputs.working-directory )) }}"
           echo "key=$PRIMARY_KEY" >> $GITHUB_OUTPUT
           echo "restore-key=$RESTORE_KEY" >> $GITHUB_OUTPUT
-          echo "path=$RESTORE_KEY" >> $GITHUB_OUTPUT
+          echo "path=$PATH_ARG" >> $GITHUB_OUTPUT
 
       - name: Restore R package cache
         if: inputs.cache == 'true'
