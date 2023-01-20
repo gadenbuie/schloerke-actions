@@ -102,20 +102,19 @@ runs:
         shell: bash
         run: |
           # Make cache args
-          PATH_ARG="${{ env.R_LIBS_USER }}/*
-          !${{ env.R_LIBS_USER }}/pak"
           RESTORE_KEY="${{ format('{0}-{1}-{2}', steps.install.outputs.os-version, steps.install.outputs.r-version, inputs.cache-version) }}"
           PRIMARY_KEY="$RESTORE_KEY-${{ hashFiles(format('{0}/.github/pkg.lock', inputs.working-directory )) }}"
           echo "key=$PRIMARY_KEY" >> $GITHUB_OUTPUT
           echo "restore-key=$RESTORE_KEY" >> $GITHUB_OUTPUT
-          echo "path=\"$PATH_ARG\"" >> $GITHUB_OUTPUT
 
       - name: Restore R package cache
         if: inputs.cache == 'true'
         id: r-pkg-cache
         uses: actions/cache@v3
         with:
-          path: ${{ steps.cache-args.outputs.path }}
+          path: |
+            ${{ env.R_LIBS_USER }}/*
+            !${{ env.R_LIBS_USER }}/pak
           key: ${{ steps.cache-args.outputs.key }}
           restore-keys: ${{ steps.cache-keys.outputs.restore-key }}
 
@@ -140,7 +139,9 @@ runs:
         if: inputs.cache == 'true' && steps.r-pkg-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v3
         with:
-          path: ${{ steps.cache-args.outputs.path }}
+          path: |
+            ${{ env.R_LIBS_USER }}/*
+            !${{ env.R_LIBS_USER }}/pak
           key: ${{ steps.cache-args.outputs.key }}
 
       - name: Session info
