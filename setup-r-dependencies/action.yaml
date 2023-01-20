@@ -121,7 +121,7 @@ runs:
           PRIMARY_KEY="$RESTORE_KEY-${{ hashFiles(format('{0}/.github/pkg.lock', inputs.working-directory )) }}"
           echo "key=$PRIMARY_KEY" >> $GITHUB_OUTPUT
           echo "restore-key=$RESTORE_KEY" >> $GITHUB_OUTPUT
-          echo "path=$PATH_ARG" >> $GITHUB_OUTPUT
+          echo "path=\"$PATH_ARG\"" >> $GITHUB_OUTPUT
 
       - name: Restore R package cache
         if: inputs.cache == 'true'
