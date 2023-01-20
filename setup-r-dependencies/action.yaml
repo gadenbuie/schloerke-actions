@@ -109,20 +109,28 @@ runs:
           cat("::endgroup::\n")
         shell: Rscript {0}
         working-directory: ${{ inputs.working-directory }}
+      
+      - name: Create cache args
+        id: cache-args
+        shell: bash
+        run: |
+          # Make cache args
+          PATH="${{ env.R_LIBS_USER }}/*
+          !${{ env.R_LIBS_USER }}/pak"
+          RESTORE_KEY="${{ format('{0}-{1}-{2}', steps.install.outputs.os-version, steps.install.outputs.r-version, inputs.cache-version) }}"
+          PRIMARY_KEY="$RESTORE_KEY-${{ hashFiles(format('{0}/.github/pkg.lock', inputs.working-directory )) }}"
+          echo "key=$PRIMARY_KEY" >> $GITHUB_OUTPUT
+          echo "restore-key=$RESTORE_KEY" >> $GITHUB_OUTPUT
+          echo "path=$RESTORE_KEY" >> $GITHUB_OUTPUT
 
       - name: Restore R package cache
         if: inputs.cache == 'true'
         id: r-pkg-cache
         uses: actions/cache@v3
         with:
-          path: |
-            ${{ env.R_LIBS_USER }}/*
-            !${{ env.R_LIBS_USER }}/pak
-          key: ${{ format('{0}-{1}-{2}-{3}', steps.install.outputs.os-version, steps.install.outputs.r-version, inputs.cache-version, hashFiles(format('{0}/.github/pkg.lock', inputs.working-directory ))) }}
-          # (Possibly) Restore from regular caches first, then from init caches (saved in a later step)
-          restore-keys: |
-            ${{ steps.install.outputs.os-version }}-${{ steps.install.outputs.r-version }}-${{inputs.cache-version }}-
-            ${{ steps.install.outputs.os-version }}-${{ steps.install.outputs.r-version }}-init-${{inputs.cache-version }}-
+          path: ${{ steps.cache-args.outputs.path }}
+          key: ${{ steps.cache-args.outputs.key }}
+          restore-keys: ${{ steps.cache-keys.outputs.restore-key }}
 
       - name: Install dependencies
         run: |
@@ -141,14 +149,12 @@ runs:
       # If an Action fails, cache from `actions/cache@v3` will NOT be saved
       # However `actions/cache/save@v3` will always save, warming the next execution of `actions/cache@v3` above
       - name: Save R package cache
-        # If `actions/cache@v3` restored from `key`, then `cache-hit == 'true'`; Skip this step
+        # If `actions/cache@v3` restored from `key`, then `cache-hit == 'true'`; If so, do not save cache
         if: inputs.cache == 'true' && steps.r-pkg-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v3
         with:
-          path: |
-            ${{ env.R_LIBS_USER }}/*
-            !${{ env.R_LIBS_USER }}/pak
-          key: ${{ format('{0}-{1}-{2}-{3}', steps.install.outputs.os-version, steps.install.outputs.r-version, inputs.cache-version, hashFiles(format('{0}/.github/pkg.lock', inputs.working-directory ))) }}
+          path: ${{ steps.cache-args.outputs.path }}
+          key: ${{ steps.cache-args.outputs.key }}
 
       - name: Session info
         run: |
